@@ -39,7 +39,6 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
-
     try {
       // Llamar al servicio de registro
       const response = await registerUser({
