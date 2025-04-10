@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 
 // Configuración base para todas las peticiones
 const config: AxiosRequestConfig = {
-  baseURL: 'https://30d3-200-122-210-2.ngrok-free.app/api',
+  baseURL: 'https://ab2f-200-122-210-2.ngrok-free.app/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

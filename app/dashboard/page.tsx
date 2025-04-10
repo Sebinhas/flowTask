@@ -18,7 +18,7 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-bold text-primary-dark">Panel</h1>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total de Proyectos</CardTitle>
@@ -47,16 +47,6 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="text-2xl font-bold">8</div>
                   <p className="text-xs text-muted-foreground">2 invitaciones pendientes</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Próximas Fechas Límite</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">5</div>
-                  <p className="text-xs text-muted-foreground">Próxima: Diseño Web (2 días)</p>
                 </CardContent>
               </Card>
             </div>

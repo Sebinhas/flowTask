@@ -4,7 +4,10 @@ import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Clock, Edit, FileText, Layers, MoreHorizontal, Plus, Settings, Users } from "lucide-react"
+import { Calendar, Clock, Edit, FileText, Layers, MoreHorizontal, Plus, Settings, Users, ArrowLeft, Search, Filter } from "lucide-react"
+import { useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 interface ProjectPageProps {
   params: {

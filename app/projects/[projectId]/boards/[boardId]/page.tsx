@@ -38,6 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { use } from "react"
 
 interface BoardPageProps {
   params: {
@@ -69,8 +70,8 @@ export default function BoardPage({ params }: BoardPageProps) {
   
   useEffect(() => {
     if (params) {
-      setProjectId(params?.projectId)
-      setBoardId(params?.boardId)
+      setProjectId(params.projectId)
+      setBoardId(params.boardId)
     }
   }, [params])
   

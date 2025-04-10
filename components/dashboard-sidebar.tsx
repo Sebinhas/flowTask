@@ -51,7 +51,8 @@ export function DashboardSidebar() {
     name: "",
     description: "",
     category: "",
-    color: ""
+    color: "",
+    otherCategory: ""
   })
   
   const mainNavItems = [
@@ -108,16 +109,20 @@ export function DashboardSidebar() {
     },
   ]
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Aquí iría la lógica para crear el proyecto
-    console.log("Nuevo proyecto:", formData)
-    // Resetear el formulario
+    console.log({
+      name: formData.name,
+      description: formData.description,
+      category: formData.category === "other" ? formData.otherCategory : formData.category,
+      color: formData.color
+    })
     setFormData({
       name: "",
       description: "",
       category: "",
-      color: ""
+      color: "",
+      otherCategory: ""
     })
     setOpen(false)
   }
@@ -156,7 +161,7 @@ export function DashboardSidebar() {
                     Completa la información para crear un nuevo proyecto.
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleCreateProject}>
+                <form onSubmit={handleSubmit}>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                       <Label htmlFor="name">Nombre del Proyecto</Label>
@@ -175,7 +180,7 @@ export function DashboardSidebar() {
                         value={formData.description}
                         onChange={handleInputChange}
                         placeholder="Describe brevemente el proyecto" 
-                        className="min-h-[80px]"
+                        className="min-h-[80px] resize-none"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -192,6 +197,15 @@ export function DashboardSidebar() {
                           <SelectItem value="other">Otro</SelectItem>
                         </SelectContent>
                       </Select>
+                      {formData.category === "other" && (
+                        <Input
+                          id="otherCategory"
+                          placeholder="Especifica la categoría"
+                          value={formData.otherCategory || ""}
+                          onChange={handleInputChange}
+                          className="mt-2"
+                        />
+                      )}
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="color">Color</Label>

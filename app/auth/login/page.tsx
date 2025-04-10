@@ -11,36 +11,43 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { useLogin }  from "./useLogin"
+import { useForm } from "react-hook-form"
 
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  })
+  const { login } = useLogin()
+  
+  // Configurar useForm
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: {
+      email: "",
+      password: "",
+    }
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: any) => {
+    console.log(data)
     setIsLoading(true)
 
     try {
-      // En una aplicación real, harías una llamada a la API para autenticar al usuario
-      // Para fines de demostración, simularemos un inicio de sesión exitoso
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "¡Bienvenido de nuevo a FlowTask!",
-      })
-
-      router.push("/dashboard")
+      const response = await login(data);
+      
+      if (response.user) {
+        toast({
+          title: "Inicio de sesión exitoso",
+          description: response.message,
+        })
+        router.push("/dashboard");
+      } else {
+        toast({
+          title: "Error de inicio de sesión",
+          description: response.message,
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error de inicio de sesión",
@@ -60,39 +67,41 @@ export default function LoginPage() {
       </Link>
 
       <Card className="w-full max-w-md animate-fade-in">
-        <CardHeader>
+        <CardHeader className="text-center">
           <CardTitle className="text-2xl text-center text-primary-dark">Bienvenido de nuevo</CardTitle>
           <CardDescription className="text-center">Ingresa tus credenciales para acceder a tu cuenta</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
+              <Label htmlFor="email" className="text-left block">Correo electrónico</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="nombre@ejemplo.com"
-                required
-                value={formData.email}
-                onChange={handleChange}
+                className={errors.email ? "border-red-500" : ""}
+                {...register("email", { 
+                  required: true,
+                  pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
+                })}
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="password" className="text-center block">Contraseña</Label>
                 <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
               <Input
                 id="password"
-                name="password"
                 type="password"
                 placeholder="••••••••"
-                required
-                value={formData.password}
-                onChange={handleChange}
+                className={errors.password ? "border-red-500" : ""}
+                {...register("password", { 
+                  required: true,
+                  minLength: 6
+                })}
               />
             </div>
           </CardContent>
