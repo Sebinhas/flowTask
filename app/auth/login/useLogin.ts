@@ -3,6 +3,7 @@ import { useState } from "react";
 import { loginUser } from "@/api/services/auth/login";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+
 export const useLogin = () => {
   const router = useRouter()
 
@@ -12,28 +13,39 @@ export const useLogin = () => {
   
   const login = async (data: LoginData): Promise<LoginResponse> => {
     setIsLoading(true)
+    setError(null)
     try {
       const response = await loginUser(data)
-      if(response.user){
+      
+      // Solo redirigimos si la respuesta incluye un usuario
+      if (response.user) {
         toast.success(response.message)
         router.push("/dashboard")
-      } else {
-        toast.error(response.message)
+        return response
       }
-      return response;
+      
+      // Si no hay usuario, mostramos el error pero no redirigimos
+      setError(response.message)
+      toast.error(response.message)
+      return response
+      
     } catch (error: any) {
-      const errorResponse: LoginResponse = {
-        message: error.response?.data?.message || "Error al iniciar sesión"
-      };
-      toast.error(errorResponse.message);
-      return errorResponse;
+      const errorMessage = error.response?.data?.message || "Error al iniciar sesión"
+      setError(errorMessage)
+      toast.error(errorMessage)
+      
+      return {
+        message: errorMessage
+      }
     } finally {
       setIsLoading(false)
     }
   };
 
   return {
-    login
+    login,
+    isLoading,
+    error
   }
 };
 

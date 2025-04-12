@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 
 // Configuración base para todas las peticiones
 const config: AxiosRequestConfig = {
-  baseURL: 'https://ab2f-200-122-210-2.ngrok-free.app/api',
+  baseURL: 'https://cdaa-200-122-210-2.ngrok-free.app/api/',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ axiosInstance.interceptors.response.use(
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
           // Redirigir a la página de login
-          window.location.href = '/login';
+          window.location.href = '/auth/login';
         }
       }
       

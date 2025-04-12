@@ -65,39 +65,11 @@ interface Column {
 }
 
 export default function BoardPage({ params }: BoardPageProps) {
+  // Todos los useState deben estar al inicio del componente
   const [projectId, setProjectId] = useState<string>("")
   const [boardId, setBoardId] = useState<string>("")
-  
-  useEffect(() => {
-    if (params) {
-      setProjectId(params.projectId)
-      setBoardId(params.boardId)
-    }
-  }, [params])
-  
-  if (!projectId || !boardId) {
-    return <div className="flex min-h-screen items-center justify-center">Cargando...</div>
-  }
-
-  // Datos de ejemplo del proyecto y tablero
-  const project = {
-    id: projectId,
-    name:
-      projectId === "website-redesign"
-        ? "Rediseño de Sitio Web"
-        : projectId === "mobile-app"
-          ? "App Móvil"
-          : projectId === "marketing-campaign"
-            ? "Campaña de Marketing"
-            : "Proyecto",
-    color: "blue",
-  }
-
-  const board = {
-    id: boardId,
-    name: boardId === "main" ? "Tablero Principal" : boardId === "backlog" ? "Backlog" : "Tablero",
-  }
-
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [email, setEmail] = useState("")
   const [columns, setColumns] = useState<Column[]>([
     {
       id: "todo",
@@ -204,7 +176,6 @@ export default function BoardPage({ params }: BoardPageProps) {
       ],
     },
   ])
-
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskColumn, setNewTaskColumn] = useState("")
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -214,6 +185,39 @@ export default function BoardPage({ params }: BoardPageProps) {
     assignees: [],
     tags: [],
   })
+  
+  // Desenvolver params como una Promise
+  const resolvedParams = use(params as unknown as Promise<{ projectId: string; boardId: string }>)
+  
+  useEffect(() => {
+    if (resolvedParams) {
+      setProjectId(resolvedParams.projectId)
+      setBoardId(resolvedParams.boardId)
+    }
+  }, [resolvedParams])
+  
+  if (!projectId || !boardId) {
+    return <div className="flex min-h-screen items-center justify-center">Cargando...</div>
+  }
+
+  // Datos de ejemplo del proyecto y tablero
+  const project = {
+    id: projectId,
+    name:
+      projectId === "website-redesign"
+        ? "Rediseño de Sitio Web"
+        : projectId === "mobile-app"
+          ? "App Móvil"
+          : projectId === "marketing-campaign"
+            ? "Campaña de Marketing"
+            : "Proyecto",
+    color: "blue",
+  }
+
+  const board = {
+    id: boardId,
+    name: boardId === "main" ? "Tablero Principal" : boardId === "backlog" ? "Backlog" : "Tablero",
+  }
 
   const handleAddTask = (columnId: string) => {
     setIsAddingTask(true)

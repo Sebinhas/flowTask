@@ -12,18 +12,25 @@ export const useRegister = () =>{
         setIsLoading(true);
         try {
             const response = await registerUser(data);
-            if(response.success){
+            if (response.success) {
                 toast.success('Usuario registrado correctamente');
-                router.push('/auth/login');
+                setTimeout(() => {
+                    router.push('/auth/login');
+                }, 2000);
+            } else {
+                toast.error(response.message || 'Error al registrar usuario');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.log(error);
-            toast.error('Error al registrar usuario');
+            toast.error(error.response?.data?.message || 'Error al registrar usuario');
+        } finally {
+            setIsLoading(false);
         }
     }
     return {
         handleRegister,
         validatePassword,
-        setValidatePassword
+        setValidatePassword,
+        isLoading
     }
 }
