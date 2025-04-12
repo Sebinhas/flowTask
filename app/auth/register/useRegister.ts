@@ -8,15 +8,12 @@ export const useRegister = () =>{
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const handleRegister = async (data: RegisterData) => {  
-        
+
         setIsLoading(true);
         try {
             const response = await registerUser(data);
             if (response.success) {
                 toast.success('Usuario registrado correctamente');
-                setTimeout(() => {
-                    router.push('/auth/login');
-                }, 2000);
             } else {
                 toast.error(response.message || 'Error al registrar usuario');
             }

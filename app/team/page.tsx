@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Mail, Plus, Search, Shield, User, Users } from "lucide-react"
+import { Toaster } from "sonner"
 
 export default function TeamPage() {
   const teamMembers = [
@@ -77,6 +78,7 @@ export default function TeamPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <Toaster position="top-right"/>
       <DashboardHeader />
       <div className="flex flex-1">
         <aside className="hidden w-64 border-r md:block">

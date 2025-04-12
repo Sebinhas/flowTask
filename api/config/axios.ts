@@ -2,11 +2,12 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 
 // Configuración base para todas las peticiones
 const config: AxiosRequestConfig = {
-  baseURL: 'https://cdaa-200-122-210-2.ngrok-free.app/api/',
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true'
   }
 };
 
@@ -23,10 +24,14 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Asegurar que el header de ngrok esté presente en todas las peticiones
+    config.headers['ngrok-skip-browser-warning'] = 'true';
     
     return config;
   },
   (error) => {
+    console.error('Error en la petición:', error);
     return Promise.reject(error);
   }
 );
@@ -34,14 +39,26 @@ axiosInstance.interceptors.request.use(
 // Interceptor de respuestas
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Procesar respuestas exitosas si es necesario
-    return response;
+    // Si la respuesta es HTML (página de advertencia de ngrok), rechazar
+    const contentType = response.headers['content-type'];
+    if (contentType && contentType.includes('text/html')) {
+      return Promise.reject(new Error('Error de conexión con el servidor. Por favor, intenta de nuevo.'));
+    }
+    
+    // Devolver solo los datos de la respuesta
+    return response.data;
   },
   (error) => {
     // Manejar errores de respuesta
     if (error.response) {
       // El servidor respondió con un código de estado fuera del rango 2xx
-      const { status } = error.response;
+      const { status, data } = error.response;
+      
+      console.error('Error de respuesta:', {
+        status,
+        data,
+        url: error.config?.url
+      });
       
       // Si el token ha expirado o es inválido (401)
       if (status === 401) {
@@ -64,10 +81,10 @@ axiosInstance.interceptors.response.use(
       }
     } else if (error.request) {
       // La petición fue hecha pero no se recibió respuesta
-      console.error('No se pudo conectar con el servidor. Verifica tu conexión');
+      console.error('No se pudo conectar con el servidor. Verifica tu conexión y la URL del servidor');
     } else {
       // Ocurrió un error al configurar la petición
-      console.error('Error al procesar la petición', error.message);
+      console.error('Error al procesar la petición:', error.message);
     }
     
     return Promise.reject(error);

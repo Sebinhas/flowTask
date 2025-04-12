@@ -16,20 +16,15 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
+import { useUserStore } from "@/lib/store/userStore"
 
-interface DashboardHeaderProps {
-  user?: {
-    name: string
-    email: string
-    avatar?: string
-  }
-}
 
-export function DashboardHeader({ user = { name: "Juan Pérez", email: "juan@ejemplo.com" } }: DashboardHeaderProps) {
+
+export function DashboardHeader() {
   const router = useRouter()
   const { toast } = useToast()
   const [theme, setTheme] = useState<"light" | "dark">("light")
-
+  const { user } = useUserStore()
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light"
     setTheme(newTheme)
@@ -79,8 +74,8 @@ export function DashboardHeader({ user = { name: "Juan Pérez", email: "juan@eje
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              {user.avatar ? (
-                <img src={user.avatar || "/placeholder.svg"} alt={user.name} className="h-8 w-8 rounded-full" />
+              {user?.avatar ? (
+                <img src={user.avatar || "/placeholder.svg"} alt={user.full_name} className="h-8 w-8 rounded-full" />
               ) : (
                 <User className="h-5 w-5" />
               )}
@@ -90,8 +85,8 @@ export function DashboardHeader({ user = { name: "Juan Pérez", email: "juan@eje
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span>{user.name}</span>
-                <span className="text-xs text-muted-foreground">{user.email}</span>
+                <span>{user?.full_name}</span>
+                <span className="text-xs text-muted-foreground">{user?.email}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

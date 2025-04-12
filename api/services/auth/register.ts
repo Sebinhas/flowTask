@@ -21,7 +21,7 @@ export interface RegisterResponse {
 export const registerUser = async (data: RegisterData): Promise<RegisterResponse> => {
   try {
     // Realiza la petición al endpoint de registro
-    const response = await axiosInstance.post<RegisterResponse>('auth/register', data);
+    const response = await axiosInstance.post<RegisterResponse>('/auth/register', data);
     
     // Si la petición fue exitosa y hay un token en la respuesta, guárdalo
     if (response.data.success && response.data.token) {

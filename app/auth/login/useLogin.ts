@@ -1,52 +1,61 @@
-import { LoginData, LoginResponse } from "@/api/services/auth/login";
-import { useState } from "react";
-import { loginUser } from "@/api/services/auth/login";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { loginUser } from '@/api/services/auth/login';
+import { getUserById } from '@/api/services/users/users';
+import { useUserStore } from '@/lib/store/userStore';
+import { toast } from 'sonner';
+import { User } from '@/types/user';
 
 export const useLogin = () => {
-  const router = useRouter()
-
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
-  const login = async (data: LoginData): Promise<LoginResponse> => {
-    setIsLoading(true)
-    setError(null)
+  const router = useRouter();
+  const setUser = useUserStore((state) => state.setUser);
+
+  const login = async (data: { email: string; password: string }) => {
     try {
-      const response = await loginUser(data)
+      setIsLoading(true);
       
-      // Solo redirigimos si la respuesta incluye un usuario
-      if (response.user) {
-        toast.success(response.message)
-        router.push("/dashboard")
-        return response
+      // Intentar login
+      const loginResponse = await loginUser(data);
+      console.log('Login response:', loginResponse);
+      
+      if (!loginResponse.user) {
+        throw new Error(loginResponse.message);
+      }
+
+      // Guardar usuario en el store
+      const userInfo = loginResponse.user;
+      setUser(userInfo);
+      
+      // Verificar que el usuario se guardó
+      const storedUser = useUserStore.getState().user;
+      console.log('Usuario en store después de guardar:', storedUser);
+      
+      if (!storedUser) {
+        throw new Error('No se pudo guardar el usuario en el store');
       }
       
-      // Si no hay usuario, mostramos el error pero no redirigimos
-      setError(response.message)
-      toast.error(response.message)
-      return response
+      // Mostrar mensaje de éxito
+      toast.success('¡Bienvenido!');
+      
+      // Redirigir al dashboard
+      router.push('/dashboard');
+
+      return loginResponse;
       
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Error al iniciar sesión"
-      setError(errorMessage)
-      toast.error(errorMessage)
-      
-      return {
-        message: errorMessage
-      }
+      console.error('Error en login:', error);
+      toast.error(error.message || 'Error al iniciar sesión');
+      throw error;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   };
 
   return {
     login,
-    isLoading,
-    error
-  }
+    isLoading
+  };
 };
 
 export default useLogin;

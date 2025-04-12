@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast"
 import { useLogin }  from "./useLogin"
 import { useForm } from "react-hook-form"
+import { Toaster } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -28,32 +29,12 @@ export default function LoginPage() {
     }
   });
 
-  const onSubmit = async (data: any) => {
-    console.log(data)
-    setIsLoading(true)
-
+  const onSubmit = async (data: { email: string; password: string }) => {
     try {
-      const response = await login(data);
-      
-      if (response.user) {
-        toast({
-          title: "Inicio de sesión exitoso",
-          description: response.message,
-        })
-        router.push("/dashboard");
-      } else {
-        toast({
-          title: "Error de inicio de sesión",
-          description: response.message,
-          variant: "destructive",
-        })
-      }
+      setIsLoading(true)
+      await login(data)
     } catch (error) {
-      toast({
-        title: "Error de inicio de sesión",
-        description: "Por favor verifica tus credenciales e intenta nuevamente.",
-        variant: "destructive",
-      })
+      console.error('Error en login:', error)
     } finally {
       setIsLoading(false)
     }
@@ -61,6 +42,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <Toaster position="top-right"/>
       <Link href="/" className="flex items-center gap-2 mb-8">
         <Layers className="h-6 w-6 text-primary" />
         <span className="text-xl font-bold text-primary-dark">FlowTask</span>

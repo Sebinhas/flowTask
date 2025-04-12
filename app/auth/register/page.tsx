@@ -49,7 +49,7 @@ export default function RegisterPage() {
 
       if (response.success) {
         toast.success(response.message || "Registro exitoso");
-        router.push("/dashboard");
+        router.push("/auth/login");
       } else {
         toast.error(response.message || "Error en el registro");
       }

@@ -1,12 +1,22 @@
+'use client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { Button } from "@/components/ui/button"
 import { Activity, Calendar, CheckCircle2, Clock, Plus, Users } from "lucide-react"
-
+import { useUserStore } from "@/lib/store/userStore";
+import { Toaster } from "sonner";
+import useDashboard from "./useDashboard";
+import { useEffect } from "react"
 export default function DashboardPage() {
+  const { user } = useUserStore();
+  const {  } = useDashboard()
+  
+  
+
   return (
     <div className="flex min-h-screen flex-col">
+      <Toaster position="top-right"/>
       <DashboardHeader />
       <div className="flex flex-1">
         <aside className="hidden w-64 border-r md:block">
