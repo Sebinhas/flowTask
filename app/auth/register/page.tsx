@@ -5,60 +5,39 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Layers } from "lucide-react"
+import { Layers, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast, Toaster } from "sonner"
 import { useForm } from 'react-hook-form'
-import { registerUser } from "@/api/services/auth/register"
+import { useRegister } from "./useRegister"
 
 export default function RegisterPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   
-  // Utilizar useForm para manejar el formulario
-  const { register, handleSubmit, formState: { errors }, watch } = useForm({
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm({
     defaultValues: {
-      name: "",
+      full_name: "",
       email: "",
       password: "",
       confirmPassword: "",
     }
   });
 
-  // Acceder al valor actual de la contraseña para validación
   const password = watch("password");
+  const { handleRegister } = useRegister();
 
-  const onSubmit = async (data: any) => {
-    // Validar que las contraseñas coincidan
-    if (data.password !== data.confirmPassword) {
-      toast.error("Las contraseñas no coinciden");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Llamar al servicio de registro
-      const response = await registerUser({
-        full_name: data.name,
-        email: data.email,
-        password: data.password
-      });
-
-      if (response.success) {
-        toast.success(response.message || "Registro exitoso");
-        router.push("/auth/login");
-      } else {
-        toast.error(response.message || "Error en el registro");
-      }
-    } catch (error) {
-      console.error("Error en el registro:", error);
-      toast.error("Error en el registro");
-    } finally {
-      setIsLoading(false);
-    }
+  const passwordRequirements = {
+    minLength: 8,
+    hasUpperCase: /[A-Z]/,
+    hasLowerCase: /[a-z]/,
+    hasNumber: /[0-9]/,
+    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/
   };
 
   return (
@@ -74,15 +53,15 @@ export default function RegisterPage() {
           <CardTitle className="text-2xl text-center text-primary-dark">Crear una cuenta</CardTitle>
           <CardDescription className="text-center">Ingresa tu información para comenzar con FlowTask</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(handleRegister)}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-left block">Nombre completo</Label>
+              <Label htmlFor="full_name" className="text-left block">Nombre completo</Label>
               <Input
-                id="name"
+                id="full_name"
                 placeholder="Juan Pérez"
-                className={errors.name ? "border-red-500" : ""}
-                {...register("name", { 
+                className={errors.full_name ? "border-red-500" : ""}
+                {...register("full_name", { 
                   required: true,
                   minLength: 3
                 })}
@@ -103,29 +82,85 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-left block">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                className={errors.password ? "border-red-500" : ""}
-                {...register("password", { 
-                  required: true,
-                  minLength: 6
-                })}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                  {...register("password", { 
+                    required: true,
+                    minLength: passwordRequirements.minLength,
+                    validate: {
+                      hasUpperCase: value => passwordRequirements.hasUpperCase.test(value) || "Debe contener al menos una letra mayúscula",
+                      hasLowerCase: value => passwordRequirements.hasLowerCase.test(value) || "Debe contener al menos una letra minúscula",
+                      hasNumber: value => passwordRequirements.hasNumber.test(value) || "Debe contener al menos un número",
+                      hasSpecialChar: value => passwordRequirements.hasSpecialChar.test(value) || "Debe contener al menos un carácter especial"
+                    }
+                  })}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>La contraseña debe cumplir con:</p>
+                <ul className="list-disc list-inside">
+                  <li className={password?.length >= passwordRequirements.minLength ? "text-green-500" : ""}>
+                    Al menos {passwordRequirements.minLength} caracteres
+                  </li>
+                  <li className={passwordRequirements.hasUpperCase.test(password || "") ? "text-green-500" : ""}>
+                    Al menos una letra mayúscula
+                  </li>
+                  <li className={passwordRequirements.hasLowerCase.test(password || "") ? "text-green-500" : ""}>
+                    Al menos una letra minúscula
+                  </li>
+                  <li className={passwordRequirements.hasNumber.test(password || "") ? "text-green-500" : ""}>
+                    Al menos un número
+                  </li>
+                  <li className={passwordRequirements.hasSpecialChar.test(password || "") ? "text-green-500" : ""}>
+                    Al menos un carácter especial (!@#$%^&*(),.?":{}|&lt;&gt;)
+                  </li>
+                </ul>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-left block">Confirmar contraseña</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                className={errors.confirmPassword ? "border-red-500" : ""}
-                {...register("confirmPassword", { 
-                  required: true,
-                  validate: value => value === password
-                })}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
+                  {...register("confirmPassword", { 
+                    required: true,
+                    validate: value => value === password || "Las contraseñas no coinciden"
+                  })}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
@@ -145,3 +180,4 @@ export default function RegisterPage() {
   )
 }
 
+ 

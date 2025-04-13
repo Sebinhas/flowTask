@@ -7,15 +7,26 @@ export const useRegister = () =>{
     const [validatePassword, setValidatePassword] = useState(false);
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
-    const handleRegister = async (data: RegisterData) => {  
 
+    const handleRegister = async (data: any) => {  
         setIsLoading(true);
         try {
-            const response = await registerUser(data);
-            if (response.success) {
-                toast.success('Usuario registrado correctamente');
+            // Validar que las contraseñas coincidan
+            if (data.password !== data.confirmPassword) {
+                toast.error("Las contraseñas no coinciden");
+                setIsLoading(false);
+                return;
+            }
+
+            const { confirmPassword, ...registerData } = data;
+            
+            const response = await registerUser(registerData);
+            console.log('response', response)
+            if (response.data.status == "success") {
+                toast.success(response.message);
+                router.push("/auth/login");
             } else {
-                toast.error(response.message || 'Error al registrar usuario');
+                toast.error(response.message || 'Error al registrar usuario2');
             }
         } catch (error: any) {
             console.log(error);

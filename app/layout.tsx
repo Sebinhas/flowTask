@@ -7,9 +7,9 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "FlowTask - Gestión de Proyectos Simplificada",
-  description: "Organiza tus proyectos y tareas con FlowTask, una herramienta moderna de gestión de proyectos",
-    generator: 'v0.dev'
+  title: "FlowTask",
+  description: "FlowTask es una herramienta de gestión de proyectos y tareas que te permite organizar tus ideas y proyectos de manera eficiente.",
+  generator: 'FlowTask'
 }
 
 export default function RootLayout({

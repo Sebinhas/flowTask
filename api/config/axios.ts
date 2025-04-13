@@ -45,20 +45,14 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(new Error('Error de conexión con el servidor. Por favor, intenta de nuevo.'));
     }
     
-    // Devolver solo los datos de la respuesta
-    return response.data;
+    // Devolver la respuesta completa
+    return response;
   },
   (error) => {
     // Manejar errores de respuesta
     if (error.response) {
       // El servidor respondió con un código de estado fuera del rango 2xx
       const { status, data } = error.response;
-      
-      console.error('Error de respuesta:', {
-        status,
-        data,
-        url: error.config?.url
-      });
       
       // Si el token ha expirado o es inválido (401)
       if (status === 401) {
@@ -70,24 +64,27 @@ axiosInstance.interceptors.response.use(
         }
       }
       
-      // Si hay un error de permisos (403)
-      if (status === 403) {
-        console.error('No tienes permisos para realizar esta acción');
-      }
-      
-      // Si hay un error de servidor (500)
-      if (status >= 500) {
-        console.error('Error en el servidor. Intenta más tarde');
-      }
+      // Devolver un objeto de error estructurado
+      return Promise.reject({
+        status: 'error',
+        message: data?.message || 'Error en la petición',
+        data: data
+      });
     } else if (error.request) {
       // La petición fue hecha pero no se recibió respuesta
-      console.error('No se pudo conectar con el servidor. Verifica tu conexión y la URL del servidor');
+      return Promise.reject({
+        status: 'error',
+        message: 'No se pudo conectar con el servidor. Verifica tu conexión y la URL del servidor',
+        data: null
+      });
     } else {
       // Ocurrió un error al configurar la petición
-      console.error('Error al procesar la petición:', error.message);
+      return Promise.reject({
+        status: 'error',
+        message: error.message || 'Error al procesar la petición',
+        data: null
+      });
     }
-    
-    return Promise.reject(error);
   }
 );
 

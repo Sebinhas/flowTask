@@ -22,7 +22,9 @@ const useProject = () => {
     try {
       const userId = user?.id
       if(userId){
+        console.log('userId', userId)
         const response = await getProjectByOwnerId(userId as string)
+        console.log('response', response)
         setProjects(response)
       } 
     } catch (error) {

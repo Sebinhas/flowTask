@@ -7,6 +7,7 @@ export interface LoginData {
 }
 
 export interface LoginResponse {
+  status: string;
   message: string;
   user?: {
     id: string;
@@ -19,11 +20,11 @@ export interface LoginResponse {
   token?: string;
 }
 
-export const loginUser = async (data: LoginData): Promise<LoginResponse> => {
+export const loginUser = async (data: LoginData): Promise<any> => {
   try {
     // Realiza la petición al endpoint de login
     const response = await axiosInstance.post<LoginResponse>('/auth/login', data);
-    return response.data;
+    return response;
   } catch (error: any) {
     // Si hay un error, devolver un objeto con formato similar al de éxito pero con el mensaje de error
     const errorMessage = error.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.';

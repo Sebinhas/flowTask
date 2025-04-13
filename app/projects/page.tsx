@@ -203,61 +203,39 @@ export default function ProjectsPage() {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {Array.isArray(projects) && projects.length > 0 ? (
-                projects.map((project) => (
-                  <Link key={project.id} href={`/projects/${project.id}`}>
-                    <Card className="h-full transition-all hover:shadow-md">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-3 w-3 rounded-full ${getColorClass(project.color)}`} />
-                          <CardTitle className="text-xl">{project.name}</CardTitle>
-                        </div>
-                        <CardDescription>{project.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pb-2">
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(project.status)}`}>
-                            {project.status}
-                          </span>
-                          {project.tags.map((tag: any) => (
-                            <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Progreso</span>
-                            <span className="font-medium">
-                              {Math.round((project.completedTasks / project.tasks) * 100)}%
-                            </span>
+                [...projects]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((project) => (
+                    <Link key={project.id} href={`/projects/${project.id}`}>
+                      <Card className="h-full transition-all hover:shadow-md">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`h-3 w-3 rounded-full`} style={{ backgroundColor: project.color }} />
+                            <CardTitle className="text-xl">{project.name}</CardTitle>
                           </div>
-                          <div className="h-2 w-full rounded-full bg-gray-100">
-                            <div
-                              className="h-2 rounded-full bg-primary"
-                              style={{
-                                width: `${Math.round((project.completedTasks / project.tasks) * 100)}%`,
-                              }}
-                            />
+                          <CardDescription>{project.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pb-2">
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
+                              {project.category}
+                            </span>
+                            {project.other_category && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
+                                {project.other_category}
+                              </span>
+                            )}
                           </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-between text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {project.members}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Layers className="h-4 w-4" />
-                          {project.completedTasks}/{project.tasks}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {project.dueDate}
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  </Link>
-                ))
+                        </CardContent>
+                        <CardFooter className="flex justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {new Date(project.created_at).toLocaleDateString()}
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  ))
               ) : (
                 <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
                   <Layers className="h-12 w-12 text-muted-foreground mb-4" />

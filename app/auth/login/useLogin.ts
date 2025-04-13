@@ -19,22 +19,14 @@ export const useLogin = () => {
       const loginResponse = await loginUser(data);
       console.log('Login response:', loginResponse);
       
-      if (!loginResponse.user) {
-        throw new Error(loginResponse.message);
+      if (loginResponse.status === "error") {
+        throw new Error(loginResponse.data.message);
       }
 
       // Guardar usuario en el store
-      const userInfo = loginResponse.user;
+      const userInfo = loginResponse.data.user;
       setUser(userInfo);
-      
-      // Verificar que el usuario se guardó
-      const storedUser = useUserStore.getState().user;
-      console.log('Usuario en store después de guardar:', storedUser);
-      
-      if (!storedUser) {
-        throw new Error('No se pudo guardar el usuario en el store');
-      }
-      
+            
       // Mostrar mensaje de éxito
       toast.success('¡Bienvenido!');
       
