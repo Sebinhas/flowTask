@@ -6,7 +6,7 @@ import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Clock, Filter, Layers, Plus, Search, Star, Users } from "lucide-react"
+import { Clock, Filter, Layers, Plus, Search, Star, Users, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -27,7 +27,7 @@ interface ProjectFormData {
 
 export default function ProjectsPage() {
   const [open, setOpen] = useState(false)
-  const { createNewProject, projects } = useProject()
+  const { createNewProject, projects, isLoading } = useProject()
   
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<ProjectFormData>({
     defaultValues: {
@@ -179,7 +179,12 @@ export default function ProjectsPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button type="submit">Crear Proyecto</Button>
+                      <Button type="submit" disabled={isLoading}>
+                        {isLoading ? 
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        : 
+                          "Crear Proyecto"}
+                      </Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>

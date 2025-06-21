@@ -1,5 +1,14 @@
 import axiosInstance from '../../config/axios';
 
+export interface Board {
+  id: string;
+  name: string;
+  tasks: number;
+  description?: string;
+  visibility: string;
+  status: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -9,7 +18,7 @@ export interface Project {
   color: string;
   owner_id: string;
   created_at: string;
-  projectBoards: any[]; // Podemos definir una interfaz específica para projectBoards si es necesario
+  projectBoards: Board[];
 }
 
 interface ProjectData {

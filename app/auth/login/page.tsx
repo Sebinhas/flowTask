@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Layers } from "lucide-react"
+import { Eye, EyeOff, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useLogin()
+  const { login, showPassword, setShowPassword, passwordRequirements } = useLogin()
   
   // Configurar useForm
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -75,16 +75,37 @@ export default function LoginPage() {
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                className={errors.password ? "border-red-500" : ""}
-                {...register("password", { 
-                  required: true,
-                  minLength: 6
-                })}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                  {...register("password", { 
+                    required: true,
+                    minLength: passwordRequirements.minLength,
+                    validate: {
+                      hasUpperCase: value => passwordRequirements.hasUpperCase.test(value) || "Debe contener al menos una letra mayúscula",
+                      hasLowerCase: value => passwordRequirements.hasLowerCase.test(value) || "Debe contener al menos una letra minúscula",
+                      hasNumber: value => passwordRequirements.hasNumber.test(value) || "Debe contener al menos un número",
+                      hasSpecialChar: value => passwordRequirements.hasSpecialChar.test(value) || "Debe contener al menos un carácter especial"
+                    }
+                  })}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

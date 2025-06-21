@@ -7,6 +7,7 @@ import { getProjectByOwnerId } from "@/api/services/projects/project"
 
 const useProject = () => {
   const [projects, setProjects] = useState<any>()
+  const [isLoading, setIsLoading] = useState(false)
   const { user } = useUserStore()
 
   useEffect(() => {
@@ -34,25 +35,28 @@ const useProject = () => {
 
   const createNewProject = async (project: any) => {
    try {
-    console.log(user?.id)
     const projectData = {
       ...project,
       owner_id: user?.id as string
     }
+    setIsLoading(true)
     const response = await createProject(projectData)
     if(response){
+      setIsLoading(false)
       toast.success("Proyecto creado correctamente")
       await getProjects()
     }
-    
+    setIsLoading(false)
    } catch (error) {
     console.log(error)
+    setIsLoading(false)
    }
   }
 
   return {
     createNewProject,
-    projects
+    projects,
+    isLoading
   }
 }
 

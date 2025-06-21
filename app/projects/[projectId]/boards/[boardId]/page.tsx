@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, use } from "react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
@@ -16,10 +16,12 @@ import {
   Clock,
   Edit,
   Filter,
+  Layers,
   MoreHorizontal,
   Plus,
   Search,
   Settings,
+  Users,
 } from "lucide-react"
 import {
   Dialog,
@@ -38,12 +40,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { use } from "react"
+import { getInfoBoard } from "@/api/services/projects/board"
+import { createTask } from "@/api/services/projects/tasks"
+import { toast } from "sonner"
 
 interface BoardPageProps {
-  params: {
+  params: Promise<{
     projectId: string
     boardId: string
+  }>
+}
+
+interface BoardMember {
+  id: string
+  full_name: string
+  email: string
+  avatar: string | null
+  BoardMember: {
+    role: string
   }
 }
 
@@ -51,239 +65,204 @@ interface Task {
   id: string
   title: string
   description: string
+  priority: string
   status: string
-  priority: "low" | "medium" | "high"
-  assignees: string[]
-  dueDate?: string
-  tags: string[]
+  due_date: string
+  position: number
+  list_id: string
+  is_active: boolean
+  created_at: string
 }
 
-interface Column {
+interface List {
   id: string
-  title: string
+  name: string
+  position: number
+  board_id: string
+  created_at: string
   tasks: Task[]
 }
 
+interface Board {
+  id: string
+  name: string
+  description: string
+  owner_id: string
+  project_id: string
+  visibility: string
+  status: string
+  created_at: string
+  owner: {
+    id: string
+    full_name: string
+    email: string
+    avatar: string | null
+  }
+  boardMembers: BoardMember[]
+  lists: List[]
+}
+
 export default function BoardPage({ params }: BoardPageProps) {
-  // Todos los useState deben estar al inicio del componente
-  const [projectId, setProjectId] = useState<string>("")
-  const [boardId, setBoardId] = useState<string>("")
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-  const [email, setEmail] = useState("")
-  const [columns, setColumns] = useState<Column[]>([
-    {
-      id: "todo",
-      title: "Por Hacer",
-      tasks: [
-        {
-          id: "task-1",
-          title: "Investigar competidores",
-          description:
-            "Analizar los sitios web de los 5 principales competidores e identificar fortalezas y debilidades",
-          status: "todo",
-          priority: "medium",
-          assignees: ["Juan Pérez"],
-          dueDate: "5 Oct, 2023",
-          tags: ["Investigación"],
-        },
-        {
-          id: "task-2",
-          title: "Crear wireframes",
-          description: "Diseñar wireframes para la página principal, acerca de y páginas de contacto",
-          status: "todo",
-          priority: "high",
-          assignees: ["María García"],
-          dueDate: "8 Oct, 2023",
-          tags: ["Diseño"],
-        },
-        {
-          id: "task-3",
-          title: "Inventario de contenido",
-          description: "Catalogar todo el contenido existente e identificar brechas",
-          status: "todo",
-          priority: "low",
-          assignees: ["Ana Martínez"],
-          tags: ["Contenido"],
-        },
-      ],
-    },
-    {
-      id: "in-progress",
-      title: "En Progreso",
-      tasks: [
-        {
-          id: "task-4",
-          title: "Sistema de diseño",
-          description: "Crear un sistema de diseño coherente que incluya colores, tipografía y componentes",
-          status: "in-progress",
-          priority: "high",
-          assignees: ["María García"],
-          dueDate: "10 Oct, 2023",
-          tags: ["Diseño"],
-        },
-        {
-          id: "task-5",
-          title: "Personas de usuario",
-          description: "Desarrollar personas de usuario detalladas para guiar las decisiones de diseño",
-          status: "in-progress",
-          priority: "medium",
-          assignees: ["Juan Pérez", "Ana Martínez"],
-          dueDate: "7 Oct, 2023",
-          tags: ["Investigación", "UX"],
-        },
-      ],
-    },
-    {
-      id: "review",
-      title: "Revisión",
-      tasks: [
-        {
-          id: "task-6",
-          title: "Maqueta de página principal",
-          description: "Maqueta de alta fidelidad de la página principal basada en wireframes aprobados",
-          status: "review",
-          priority: "high",
-          assignees: ["María García"],
-          dueDate: "12 Oct, 2023",
-          tags: ["Diseño"],
-        },
-      ],
-    },
-    {
-      id: "done",
-      title: "Completado",
-      tasks: [
-        {
-          id: "task-7",
-          title: "Inicio del proyecto",
-          description: "Reunión inicial para definir el alcance y cronograma del proyecto",
-          status: "done",
-          priority: "high",
-          assignees: ["Juan Pérez", "María García", "Carlos Rodríguez", "Ana Martínez"],
-          dueDate: "28 Sep, 2023",
-          tags: ["Reunión"],
-        },
-        {
-          id: "task-8",
-          title: "Mapa del sitio",
-          description: "Crear un mapa del sitio completo para el nuevo sitio web",
-          status: "done",
-          priority: "medium",
-          assignees: ["Carlos Rodríguez"],
-          dueDate: "1 Oct, 2023",
-          tags: ["Planificación"],
-        },
-      ],
-    },
-  ])
+  const resolvedParams = use(params)
+  const [board, setBoard] = useState<Board | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskColumn, setNewTaskColumn] = useState("")
-  const [newTask, setNewTask] = useState<Partial<Task>>({
+  const [newTask, setNewTask] = useState({
     title: "",
     description: "",
-    priority: "medium",
-    assignees: [],
-    tags: [],
+    priority: "media",
+    due_date: "",
+    assigned_users: [] as string[]
   })
-  
-  // Desenvolver params como una Promise
-  const resolvedParams = use(params as unknown as Promise<{ projectId: string; boardId: string }>)
-  
+  const [isMounted, setIsMounted] = useState(false)
+
   useEffect(() => {
-    if (resolvedParams) {
-      setProjectId(resolvedParams.projectId)
-      setBoardId(resolvedParams.boardId)
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+
+    let isActive = true
+
+    const fetchBoard = async () => {
+      try {
+        const boardData = await getInfoBoard(resolvedParams.boardId)
+        if (isActive) {
+          setBoard(boardData)
+        }
+      } catch (err) {
+        if (isActive) {
+          setError(err instanceof Error ? err.message : 'Error al cargar el tablero')
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false)
+        }
+      }
     }
-  }, [resolvedParams])
-  
-  if (!projectId || !boardId) {
-    return <div className="flex min-h-screen items-center justify-center">Cargando...</div>
-  }
 
-  // Datos de ejemplo del proyecto y tablero
-  const project = {
-    id: projectId,
-    name:
-      projectId === "website-redesign"
-        ? "Rediseño de Sitio Web"
-        : projectId === "mobile-app"
-          ? "App Móvil"
-          : projectId === "marketing-campaign"
-            ? "Campaña de Marketing"
-            : "Proyecto",
-    color: "blue",
-  }
+    fetchBoard()
 
-  const board = {
-    id: boardId,
-    name: boardId === "main" ? "Tablero Principal" : boardId === "backlog" ? "Backlog" : "Tablero",
-  }
+    return () => {
+      isActive = false
+    }
+  }, [resolvedParams.boardId, isMounted])
 
-  const handleAddTask = (columnId: string) => {
+  const handleCreateTask = useCallback(async () => {
+    if (!newTask.title.trim()) {
+      toast.error("El título de la tarea es requerido")
+      return
+    }
+
+    try {
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description,
+        due_date: newTask.due_date || null,
+        priority: newTask.priority,
+        assigned_users: newTask.assigned_users
+      }
+
+      const createdTask = await createTask(newTaskColumn, taskData)
+      
+      setBoard(prevBoard => {
+        if (!prevBoard) return prevBoard
+        
+        return {
+          ...prevBoard,
+          lists: prevBoard.lists.map(list => {
+            if (list.id === newTaskColumn) {
+              return {
+                ...list,
+                tasks: [...list.tasks, createdTask]
+              }
+            }
+            return list
+          })
+        }
+      })
+
+      setNewTask({
+        title: "",
+        description: "",
+        priority: "media",
+        due_date: "",
+        assigned_users: []
+      })
+      
+      setIsAddingTask(false)
+      toast.success("Tarea creada exitosamente")
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || "Error al crear la tarea"
+      toast.error(errorMessage)
+    }
+  }, [newTask, newTaskColumn])
+
+  const handleAddTask = useCallback((listId: string) => {
     setIsAddingTask(true)
-    setNewTaskColumn(columnId)
+    setNewTaskColumn(listId)
     setNewTask({
       title: "",
       description: "",
-      priority: "medium",
-      assignees: [],
-      tags: [],
+      priority: "media",
+      due_date: "",
+      assigned_users: []
     })
-  }
+  }, [])
 
-  const handleCreateTask = () => {
-    if (!newTask.title) return
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setNewTask(prev => ({ ...prev, [field]: value }))
+  }, [])
 
-    const task: Task = {
-      id: `task-${Date.now()}`,
-      title: newTask.title,
-      description: newTask.description || "",
-      status: newTaskColumn,
-      priority: newTask.priority as "low" | "medium" | "high",
-      assignees: newTask.assignees || [],
-      dueDate: newTask.dueDate,
-      tags: newTask.tags || [],
-    }
+  const handlePriorityChange = useCallback((priority: string) => {
+    setNewTask(prev => ({ ...prev, priority }))
+  }, [])
 
-    setColumns(
-      columns.map((column) => {
-        if (column.id === newTaskColumn) {
-          return {
-            ...column,
-            tasks: [...column.tasks, task],
-          }
-        }
-        return column
-      }),
+  if (!isMounted || loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <DashboardHeader />
+        <div className="flex flex-1">
+          <aside className="hidden w-64 border-r md:block">
+            <DashboardSidebar />
+          </aside>
+          <main className="flex-1 p-6">
+            <div className="flex items-center justify-center h-full">
+              <p>Cargando tablero...</p>
+            </div>
+          </main>
+        </div>
+      </div>
     )
-
-    setIsAddingTask(false)
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return <AlertCircle className="h-3 w-3" />
-      case "medium":
-        return <Clock className="h-3 w-3" />
-      case "low":
-        return <CheckCircle2 className="h-3 w-3" />
-      default:
-        return null
-    }
+  if (error || !board) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <DashboardHeader />
+        <div className="flex flex-1">
+          <aside className="hidden w-64 border-r md:block">
+            <DashboardSidebar />
+          </aside>
+          <main className="flex-1 p-6">
+            <div className="flex flex-col items-center justify-center h-full">
+              <Layers className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">Error</h3>
+              <p className="text-muted-foreground mb-4">{error || 'Tablero no encontrado'}</p>
+              <Link href={`/projects/${resolvedParams.projectId}`}>
+                <Button variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Volver al proyecto
+                </Button>
+              </Link>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -299,20 +278,28 @@ export default function BoardPage({ params }: BoardPageProps) {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Link href={`/projects/${projectId}`} className="text-muted-foreground hover:text-foreground">
+                    <Link href={`/projects/${resolvedParams.projectId}`} className="text-muted-foreground hover:text-foreground">
                       <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div className="flex items-center gap-2">
-                      <div className={`h-3 w-3 rounded-full bg-blue-500`} />
-                      <span className="text-sm text-muted-foreground">{project.name}</span>
-                      <span className="text-sm text-muted-foreground">/</span>
                       <h1 className="text-xl font-bold text-primary-dark">{board.name}</h1>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        board.visibility === 'public' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {board.visibility === 'public' ? 'Público' : 'Privado'}
+                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        board.status === 'active' 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {board.status === 'active' ? 'Activo' : 'Inactivo'}
+                      </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Editar tablero</span>
-                    </Button>
                   </div>
+                  <p className="text-muted-foreground mt-1">{board.description}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -334,13 +321,13 @@ export default function BoardPage({ params }: BoardPageProps) {
 
           <div className="container py-6">
             <div className="flex h-[calc(100vh-12rem)] gap-4 overflow-x-auto pb-4">
-              {columns.map((column) => (
-                <div key={column.id} className="flex-shrink-0 w-80">
+              {board.lists.map((list) => (
+                <div key={list.id} className="flex-shrink-0 w-80">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium">{column.title}</h3>
+                      <h3 className="font-medium">{list.name}</h3>
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                        {column.tasks.length}
+                        {list.tasks?.length || 0}
                       </span>
                     </div>
                     <DropdownMenu>
@@ -351,132 +338,137 @@ export default function BoardPage({ params }: BoardPageProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Editar Columna</DropdownMenuItem>
+                        <DropdownMenuItem>Editar Lista</DropdownMenuItem>
                         <DropdownMenuItem>Ordenar Tareas</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">Eliminar Columna</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600">Eliminar Lista</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    {column.tasks.map((task) => (
-                      <Dialog key={task.id}>
-                        <DialogTrigger asChild>
-                          <Card className="cursor-pointer hover:shadow-md">
-                            <CardHeader className="p-3 pb-0">
-                              <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-3 pt-2">
-                              {task.description && (
-                                <CardDescription className="text-xs line-clamp-2 mb-2">
-                                  {task.description}
-                                </CardDescription>
-                              )}
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                <span
-                                  className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${getPriorityColor(task.priority)}`}
-                                >
-                                  {getPriorityIcon(task.priority)}
-                                  {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Media" : "Baja"}
-                                </span>
-                                {task.tags.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                                  >
-                                    {tag}
+                    {list.tasks && list.tasks.length > 0 ? (
+                      list.tasks.map((task) => (
+                        <Dialog key={task.id}>
+                          <DialogTrigger asChild>
+                            <Card className="cursor-pointer hover:shadow-md">
+                              <CardHeader className="p-3 pb-0">
+                                <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
+                              </CardHeader>
+                              <CardContent className="p-3 pt-2">
+                                {task.description && (
+                                  <CardDescription className="text-xs line-clamp-2 mb-2">
+                                    {task.description}
+                                  </CardDescription>
+                                )}
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                                    task.priority === 'alta' 
+                                      ? 'bg-red-100 text-red-700'
+                                      : task.priority === 'media'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-green-100 text-green-700'
+                                  }`}>
+                                    {task.priority === 'alta' ? (
+                                      <AlertCircle className="h-3 w-3" />
+                                    ) : task.priority === 'media' ? (
+                                      <Clock className="h-3 w-3" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3 w-3" />
+                                    )}
+                                    {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                                   </span>
-                                ))}
-                              </div>
-                            </CardContent>
-                            <CardFooter className="p-3 pt-0 flex justify-between items-center">
-                              <div className="flex -space-x-2">
-                                {task.assignees.slice(0, 3).map((assignee, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-white ring-2 ring-background"
-                                  >
-                                    {assignee.charAt(0)}
+                                  <span className={`rounded-full px-2 py-0.5 text-xs ${
+                                    task.status === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : task.status === 'in_progress'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-green-100 text-green-700'
+                                  }`}>
+                                    {task.status === 'pending' ? 'Pendiente' : 
+                                     task.status === 'in_progress' ? 'En Progreso' : 
+                                     'Completado'}
+                                  </span>
+                                </div>
+                              </CardContent>
+                              <CardFooter className="p-3 pt-0 flex justify-between items-center">
+                                {task.due_date && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(task.due_date).toLocaleDateString()}
                                   </div>
-                                ))}
-                                {task.assignees.length > 3 && (
-                                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs text-gray-600 ring-2 ring-background">
-                                    +{task.assignees.length - 3}
+                                )}
+                              </CardFooter>
+                            </Card>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[500px]">
+                            <DialogHeader>
+                              <DialogTitle>{task.title}</DialogTitle>
+                              <DialogDescription>{task.description}</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="flex flex-wrap gap-2">
+                                <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
+                                  task.priority === 'alta' 
+                                    ? 'bg-red-100 text-red-700'
+                                    : task.priority === 'media'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {task.priority === 'alta' ? (
+                                    <AlertCircle className="h-3 w-3" />
+                                  ) : task.priority === 'media' ? (
+                                    <Clock className="h-3 w-3" />
+                                  ) : (
+                                    <CheckCircle2 className="h-3 w-3" />
+                                  )}
+                                  Prioridad {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                </span>
+                                <span className={`rounded-full px-2 py-1 text-xs ${
+                                  task.status === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : task.status === 'in_progress'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {task.status === 'pending' ? 'Pendiente' : 
+                                   task.status === 'in_progress' ? 'En Progreso' : 
+                                   'Completado'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Estado</Label>
+                                  <div className="font-medium">{list.name}</div>
+                                </div>
+                                {task.due_date && (
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">Fecha Límite</Label>
+                                    <div className="font-medium">
+                                      {new Date(task.due_date).toLocaleDateString()}
+                                    </div>
                                   </div>
                                 )}
                               </div>
-                              {task.dueDate && (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3" />
-                                  {task.dueDate}
-                                </div>
-                              )}
-                            </CardFooter>
-                          </Card>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
-                          <DialogHeader>
-                            <DialogTitle>{task.title}</DialogTitle>
-                            <DialogDescription>{task.description}</DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="flex flex-wrap gap-2">
-                              <span
-                                className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${getPriorityColor(task.priority)}`}
-                              >
-                                {getPriorityIcon(task.priority)}
-                                Prioridad{" "}
-                                {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Media" : "Baja"}
-                              </span>
-                              {task.tags.map((tag) => (
-                                <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                                  {tag}
-                                </span>
-                              ))}
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label className="text-xs text-muted-foreground">Estado</Label>
-                                <div className="font-medium">{column.title}</div>
-                              </div>
-                              {task.dueDate && (
-                                <div>
-                                  <Label className="text-xs text-muted-foreground">Fecha Límite</Label>
-                                  <div className="font-medium">{task.dueDate}</div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <Label className="text-xs text-muted-foreground">Asignados</Label>
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {task.assignees.map((assignee, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex items-center gap-2 rounded-full bg-gray-100 px-2 py-1 text-xs"
-                                  >
-                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-white">
-                                      {assignee.charAt(0)}
-                                    </div>
-                                    {assignee}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline">Editar Tarea</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    ))}
-
+                            <DialogFooter>
+                              <Button variant="outline">Editar Tarea</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-center h-20 rounded-md border-2 border-dashed">
+                        <p className="text-sm text-muted-foreground">No hay tareas</p>
+                      </div>
+                    )}
                     <Button
                       variant="outline"
                       className="justify-start gap-2 border-dashed"
-                      onClick={() => handleAddTask(column.id)}
+                      onClick={() => {
+                        handleAddTask(list.id)
+                      }}
                     >
                       <Plus className="h-4 w-4" />
                       Añadir Tarea
@@ -487,11 +479,11 @@ export default function BoardPage({ params }: BoardPageProps) {
 
               <div className="flex-shrink-0 w-80">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium">Añadir Columna</h3>
+                  <h3 className="font-medium">Añadir Lista</h3>
                 </div>
                 <Button variant="outline" className="w-full justify-center gap-2 border-dashed h-20">
                   <Plus className="h-4 w-4" />
-                  Añadir Columna
+                  Añadir Lista
                 </Button>
               </div>
             </div>
@@ -502,17 +494,17 @@ export default function BoardPage({ params }: BoardPageProps) {
               <DialogHeader>
                 <DialogTitle>Crear Nueva Tarea</DialogTitle>
                 <DialogDescription>
-                  Añadir una nueva tarea a la columna {columns.find((c) => c.id === newTaskColumn)?.title}.
+                  Añadir una nueva tarea a la lista {board.lists.find((l) => l.id === newTaskColumn)?.name}.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="title">Título</Label>
+                  <Label htmlFor="title">Título *</Label>
                   <Input
                     id="title"
                     placeholder="Título de la tarea"
                     value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -521,25 +513,23 @@ export default function BoardPage({ params }: BoardPageProps) {
                     id="description"
                     placeholder="Descripción de la tarea"
                     value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label>Prioridad</Label>
                   <div className="flex gap-2">
                     {[
-                      { value: "low", label: "Baja" },
-                      { value: "medium", label: "Media" },
-                      { value: "high", label: "Alta" },
+                      { value: "baja", label: "Baja" },
+                      { value: "media", label: "Media" },
+                      { value: "alta", label: "Alta" },
                     ].map((priority) => (
                       <Button
                         key={priority.value}
                         type="button"
                         variant={newTask.priority === priority.value ? "default" : "outline"}
                         className="flex-1"
-                        onClick={() =>
-                          setNewTask({ ...newTask, priority: priority.value as "low" | "medium" | "high" })
-                        }
+                        onClick={() => handlePriorityChange(priority.value)}
                       >
                         {priority.label}
                       </Button>
@@ -547,12 +537,12 @@ export default function BoardPage({ params }: BoardPageProps) {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="dueDate">Fecha Límite (Opcional)</Label>
+                  <Label htmlFor="due_date">Fecha Límite (Opcional)</Label>
                   <Input
-                    id="dueDate"
+                    id="due_date"
                     type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                    value={newTask.due_date}
+                    onChange={(e) => handleInputChange('due_date', e.target.value)}
                   />
                 </div>
               </div>

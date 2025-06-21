@@ -1,3 +1,7 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
@@ -5,49 +9,144 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Clock, Edit, FileText, Layers, MoreHorizontal, Plus, Settings, Users, ArrowLeft, Search, Filter } from "lucide-react"
-import { useState } from "react"
+import { getProjectById, Board } from "@/api/services/projects/project"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useProject } from "@/app/context/ProjectContext"
+import { createBoard } from "@/api/services/projects/board"
+import { toast } from "sonner"
 
-interface ProjectPageProps {
-  params: {
-    projectId: string
-  }
+interface Project {
+  id: string
+  name: string
+  description: string
+  category: string
+  other_category: string | null
+  color: string
+  owner_id: string
+  created_at: string
+  projectBoards: Array<{
+    id: string
+    name: string
+    tasks: number
+    description?: string
+    visibility: string
+    status: string
+  }>
 }
 
-export default async function ProjectPage({ params }: ProjectPageProps) {
-  const projectId = params.projectId
+export default function ProjectPage() {
+  const params = useParams()
+  const { currentProject, setCurrentProject, currentUser, isLoading: isUserLoading } = useProject()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isCreateBoardModalOpen, setIsCreateBoardModalOpen] = useState(false)
+  const [newBoard, setNewBoard] = useState({
+    name: "",
+    description: "",
+    visibility: "public"
+  })
 
-  // Datos de ejemplo del proyecto
-  const project = {
-    id: projectId,
-    name:
-      projectId === "website-redesign"
-        ? "Rediseño de Sitio Web"
-        : projectId === "mobile-app"
-          ? "App Móvil"
-          : projectId === "marketing-campaign"
-            ? "Campaña de Marketing"
-            : "Proyecto",
-    description: "Rediseñar el sitio web de la empresa con un aspecto moderno y UX mejorada",
-    status: "En Progreso",
-    members: [
-      { id: "1", name: "Juan Pérez", role: "Gerente de Proyecto", avatar: "/placeholder.svg?height=32&width=32" },
-      { id: "2", name: "María García", role: "Diseñadora", avatar: "/placeholder.svg?height=32&width=32" },
-      { id: "3", name: "Carlos Rodríguez", role: "Desarrollador", avatar: "/placeholder.svg?height=32&width=32" },
-      { id: "4", name: "Ana Martínez", role: "Redactora de Contenido", avatar: "/placeholder.svg?height=32&width=32" },
-      { id: "5", name: "David López", role: "Tester de QA", avatar: "/placeholder.svg?height=32&width=32" },
-    ],
-    tasks: 24,
-    completedTasks: 10,
-    dueDate: "15 Oct, 2023",
-    startDate: "1 Ago, 2023",
-    tags: ["Diseño", "Desarrollo"],
-    color: "blue",
-    boards: [
-      { id: "main", name: "Tablero Principal", tasks: 18 },
-      { id: "backlog", name: "Backlog", tasks: 6 },
-    ],
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        if (params.projectId) {
+          const projectData = await getProjectById(params.projectId as string)
+          setCurrentProject(projectData)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al cargar el proyecto')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (!isUserLoading) {
+      fetchProject()
+    }
+  }, [params.projectId, setCurrentProject, isUserLoading])
+
+  const handleCreateBoard = async () => {
+    try {
+      if (!currentProject) {
+        throw new Error('No hay proyecto seleccionado')
+      }
+
+      if (!currentUser) {
+        throw new Error('No has iniciado sesión. Por favor, inicia sesión para crear un tablero.')
+      }
+
+      const boardData = {
+        ...newBoard,
+        project_id: currentProject.id,
+        owner_id: currentUser.id
+      }
+
+      const createdBoard = await createBoard(boardData)
+      
+      // Actualizar el proyecto con el nuevo tablero
+      const updatedProject = await getProjectById(currentProject.id)
+      setCurrentProject(updatedProject)
+      
+      setIsCreateBoardModalOpen(false)
+      setNewBoard({
+        name: "",
+        description: "",
+        visibility: "public"
+      })
+      
+      toast.success('Tablero creado exitosamente')
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error(error instanceof Error ? error.message : 'Error al crear el tablero')
+    }
+  }
+
+  if (isUserLoading || loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <DashboardHeader />
+        <div className="flex flex-1">
+          <aside className="hidden w-64 border-r md:block">
+            <DashboardSidebar />
+          </aside>
+          <main className="flex-1 p-6">
+            <div className="flex items-center justify-center h-full">
+              <p>Cargando...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !currentProject) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <DashboardHeader />
+        <div className="flex flex-1">
+          <aside className="hidden w-64 border-r md:block">
+            <DashboardSidebar />
+          </aside>
+          <main className="flex-1 p-6">
+            <div className="flex flex-col items-center justify-center h-full">
+              <Layers className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">Error</h3>
+              <p className="text-muted-foreground mb-4">{error || 'Proyecto no encontrado'}</p>
+              <Link href="/projects">
+                <Button variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Volver a proyectos
+                </Button>
+              </Link>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -63,14 +162,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-blue-500" />
-                    <h1 className="text-2xl font-bold text-primary-dark">{project?.name}</h1>
+                    <div className={`h-3 w-3 rounded-full`} style={{ backgroundColor: currentProject.color }} />
+                    <h1 className="text-2xl font-bold text-primary-dark">{currentProject.name}</h1>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar proyecto</span>
                     </Button>
                   </div>
-                  <p className="text-muted-foreground">{project?.description}</p>
+                  <p className="text-muted-foreground">{currentProject.description}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" className="gap-2">
@@ -108,8 +207,26 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                         <div className="h-2 w-2 rounded-full bg-blue-500" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{project.status}</div>
-                        <p className="text-xs text-muted-foreground">Iniciado el {project.startDate}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Estado:</span>
+                          <span className="text-sm font-medium">{currentProject.category}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Creado:</span>
+                          <span className="text-sm font-medium">
+                            {new Date(currentProject.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Tareas:</span>
+                          <span className="text-sm font-medium">
+                            {currentProject.projectBoards.reduce((total, board) => total + board.tasks, 0)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Tableros:</span>
+                          <span className="text-sm font-medium">{currentProject.projectBoards.length}</span>
+                        </div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -119,18 +236,18 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">
-                          {project.completedTasks}/{project.tasks}
+                          {currentProject.projectBoards.reduce((total, board) => total + board.tasks, 0)}
                         </div>
                         <div className="mt-2 h-2 w-full rounded-full bg-gray-100">
                           <div
                             className="h-2 rounded-full bg-primary"
                             style={{
-                              width: `${Math.round((project.completedTasks / project.tasks) * 100)}%`,
+                              width: `${Math.round(((currentProject.projectBoards.reduce((total, board) => total + board.tasks, 0) / (currentProject.projectBoards.length * 10)) * 100))}%`,
                             }}
                           />
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {Math.round((project.completedTasks / project.tasks) * 100)}% completado
+                          {Math.round(((currentProject.projectBoards.reduce((total, board) => total + board.tasks, 0) / (currentProject.projectBoards.length * 10)) * 100))}% completado
                         </p>
                       </CardContent>
                     </Card>
@@ -140,22 +257,24 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                         <Users className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{project.members.length}</div>
-                        <div className="mt-2 flex -space-x-2">
-                          {project.members.slice(0, 5).map((member) => (
-                            <div
-                              key={member.id}
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs text-white ring-2 ring-background"
-                            >
-                              {member.name.charAt(0)}
-                            </div>
-                          ))}
-                          {project.members.length > 5 && (
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs text-gray-600 ring-2 ring-background">
-                              +{project.members.length - 5}
-                            </div>
-                          )}
-                        </div>
+                        <div className="text-2xl font-bold">{currentProject.projectBoards.length}</div>
+                        {currentProject.projectBoards && currentProject.projectBoards.length > 0 && (
+                          <div className="mt-2 flex -space-x-2">
+                            {currentProject.projectBoards.slice(0, 5).map((board) => (
+                              <div
+                                key={board.id}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs text-white ring-2 ring-background"
+                              >
+                                {board.name.charAt(0)}
+                              </div>
+                            ))}
+                            {currentProject.projectBoards.length > 5 && (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs text-gray-600 ring-2 ring-background">
+                                +{currentProject.projectBoards.length - 5}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                     <Card>
@@ -164,10 +283,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{project.dueDate}</div>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(project.dueDate) > new Date() ? "A tiempo" : "Atrasado"}
-                        </p>
+                        <div className="text-2xl font-bold">{currentProject.projectBoards.length > 0 ? "A tiempo" : "No definida"}</div>
+                        {currentProject.projectBoards.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Última actualización: {new Date(currentProject.created_at).toLocaleDateString()}
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -180,14 +301,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {project.members.map((member) => (
-                            <div key={member.id} className="flex items-center gap-4">
+                          {currentProject.projectBoards.map((board) => (
+                            <div key={board.id} className="flex items-center gap-4">
                               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-                                {member.name.charAt(0)}
+                                {board.name.charAt(0)}
                               </div>
                               <div className="flex-1">
-                                <p className="text-sm font-medium leading-none">{member.name}</p>
-                                <p className="text-sm text-muted-foreground">{member.role}</p>
+                                <p className="text-sm font-medium leading-none">{board.name}</p>
+                                <p className="text-sm text-muted-foreground">{board.tasks} tareas</p>
                               </div>
                               <Button variant="ghost" size="sm">
                                 Mensaje
@@ -259,41 +380,57 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 <TabsContent value="boards" className="mt-0">
                   <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-semibold text-primary-dark">Tableros del Proyecto</h2>
-                      <Button className="gap-2">
+                      <h2 className="text-xl font-semibold text-black">Tableros del Proyecto</h2>
+                      <Button className="gap-2" onClick={() => setIsCreateBoardModalOpen(true)}>
                         <Plus className="h-4 w-4" />
                         Nuevo Tablero
                       </Button>
                     </div>
 
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {project.boards.map((board) => (
-                        <Link key={board.id} href={`/projects/${projectId}/boards/${board.id}`}>
-                          <Card className="h-full transition-all hover:shadow-md">
-                            <CardHeader>
-                              <CardTitle>{board.name}</CardTitle>
-                              <CardDescription>{board.tasks} tareas</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="flex h-24 items-center justify-center rounded-md border-2 border-dashed">
-                                <Layers className="h-8 w-8 text-muted-foreground" />
+                    <div className="mt-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {currentProject.projectBoards.map((board: any) => (
+                          <Link
+                            key={board.id}
+                            href={`/projects/${currentProject?.id}/boards/${board.id}`}
+                            className="block"
+                          >
+                            <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all duration-200 border border-gray-100">
+                              <div className="flex items-start justify-between mb-4">
+                                <div>
+                                  <h3 className="font-semibold text-lg text-gray-900">{board.name}</h3>
+                                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                                    {board.description || "Sin descripción"}
+                                  </p>
+                                </div>
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  board.visibility === 'public' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {board.visibility === 'public' ? 'Público' : 'Privado'}
+                                </div>
                               </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-
-                      <Card className="h-full border-2 border-dashed">
-                        <CardHeader>
-                          <CardTitle className="text-muted-foreground">Crear Nuevo Tablero</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex h-24 items-center justify-center">
-                          <Button variant="ghost" className="h-12 w-12 rounded-full">
-                            <Plus className="h-6 w-6" />
-                            <span className="sr-only">Crear tablero</span>
-                          </Button>
-                        </CardContent>
-                      </Card>
+                              
+                              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    board.status === 'active' 
+                                      ? 'bg-emerald-100 text-emerald-700' 
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {board.status === 'active' ? 'Activo' : 'Inactivo'}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  <Clock className="h-4 w-4" />
+                                  <span>Reciente</span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
@@ -354,6 +491,58 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </div>
         </main>
       </div>
+
+      <Dialog open={isCreateBoardModalOpen} onOpenChange={setIsCreateBoardModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Tablero</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nombre del Tablero</Label>
+              <Input
+                id="name"
+                value={newBoard.name}
+                onChange={(e) => setNewBoard({ ...newBoard, name: e.target.value })}
+                placeholder="Ingrese el nombre del tablero"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                className="resize-none"
+                id="description"
+                value={newBoard.description}
+                onChange={(e) => setNewBoard({ ...newBoard, description: e.target.value })}
+                placeholder="Ingrese la descripción del tablero"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="visibility">Visibilidad</Label>
+              <Select
+                value={newBoard.visibility}
+                onValueChange={(value) => setNewBoard({ ...newBoard, visibility: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione la visibilidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Público</SelectItem>
+                  <SelectItem value="private">Privado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateBoardModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateBoard}>
+              Crear Tablero
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

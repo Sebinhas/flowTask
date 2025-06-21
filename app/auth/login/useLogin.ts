@@ -8,8 +8,17 @@ import { User } from '@/types/user';
 
 export const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const setUser = useUserStore((state) => state.setUser);
+
+  const passwordRequirements = {
+    minLength: 8,
+    hasUpperCase: /[A-Z]/,
+    hasLowerCase: /[a-z]/,
+    hasNumber: /[0-9]/,
+    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/
+  };
 
   const login = async (data: { email: string; password: string }) => {
     try {
@@ -28,7 +37,7 @@ export const useLogin = () => {
       setUser(userInfo);
             
       // Mostrar mensaje de éxito
-      toast.success('¡Bienvenido!');
+      toast.success('¡Bienvenido!... espere un momento');
       
       // Redirigir al dashboard
       router.push('/dashboard');
@@ -46,7 +55,10 @@ export const useLogin = () => {
 
   return {
     login,
-    isLoading
+    isLoading,
+    showPassword,
+    setShowPassword,
+    passwordRequirements
   };
 };
 

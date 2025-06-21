@@ -5,6 +5,7 @@ const config: AxiosRequestConfig = {
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 10000,
   headers: {
+    'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'ngrok-skip-browser-warning': 'true'
